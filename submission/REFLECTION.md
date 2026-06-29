@@ -181,9 +181,13 @@ is intractable.
 
 ## 5. Track 05 — Cross-Day Integration
 
-The `Cross-Day Stack (Day 23 integrative)` dashboard renders all 6 panels; with no prior-day
-services running locally they fail-soft to "No Data" (the panels resolve the `prometheus`
-datasource correctly — they simply have no series yet).
+The `Cross-Day Stack (Day 23 integrative)` dashboard renders all 6 panels. **Day 19 is wired
+to a real source**: I started the Qdrant from my Day 19 lab (`Day19-Track2-VectorFeatureStore-Lab`,
+`docker compose up -d qdrant`) and pointed Prometheus at its `/metrics` (job `day19-qdrant` →
+`host.docker.internal:6333`). The "Day 19 — Qdrant Collections (real)" panel reads
+`collections_total{job="day19-qdrant"}` and shows **2** (live). The other 5 panels fail-soft
+to "No Data (Day X not running)" — the panels resolve the `prometheus` datasource correctly,
+they simply have no series yet.
 
 ### Which prior-day metric was hardest to expose? Why?
 
@@ -222,3 +226,45 @@ the signal the collector's `keep-errors` policy keys on to retain the traces wor
 drop the 99 % that aren't. One-line change in altitude — from "spans are being produced" to
 "I can debug a request and sample intelligently" — which is the whole difference between
 *works* and *useful*.
+
+---
+
+## 7. Bonus B3 — AgentOps (deck §13/§14/§19)
+
+I ran `BONUS-agentops/agent_run.py` (a mock multi-step shop agent) so its spans land in the
+lab's Collector → Jaeger under service **`day23-agent`**, and the SLIs land in
+`submission/agentops-report.json`. Span tree → `submission/screenshots/agentops-jaeger-spantree.png`
+(`invoke_agent → execute_tool ×4`, one `execute_tool` marked **ERROR** = the injected `inventory`
+503, with `gen_ai.operation.name` / `gen_ai.tool.name` attributes).
+
+**Agent SLIs (4 tasks):** `success_rate=0.5`, `avg_steps_per_task=3.0`, `tool_error_rate=0.083`,
+`hallucinated_tool_calls=1`, `loops_detected=1`, `cost_per_task_usd≈4.1e-5`.
+
+**Extension (option c):** I added a fourth failure mode — **`hallucinated-tool`** (the policy
+plans a `refund` tool that does not exist) — detected it in `run_task`, surfaced it in the SLIs,
+and added `BONUS-agentops/test_agent_run.py` (6 unit tests, all pass). I also marked failing
+spans OTel `ERROR` so the Collector's `keep-errors` tail-sampling **reliably retains** the
+agent's failure trajectories in Jaeger (otherwise 3 short traces would almost always be dropped
+by the 1 % probabilistic policy).
+
+### Why `pass^k` ≠ `pass@k` matters here
+
+`pass@k` = "did **at least one** of k tries succeed" — the optimistic benchmark number; it
+rewards exploration and is what eval leaderboards report. `pass^k` = "did the agent succeed
+**k times in a row** / on **every** step" — the pessimistic reliability number that compounds.
+For a deployed agent these diverge hard: my single-attempt `success_rate` is 0.5 (≈ pass@1),
+but a task is a *trajectory* — task 1 only "passes" because all three tool calls succeed, and
+a 10-step task at 0.9 per-step is `0.9^10 ≈ 0.35` end-to-end. A great `pass@k` headline can sit
+on top of a terrible `pass^k`, and the gap is exactly the failure modes I instrumented:
+loop/no-progress, tool-error, hallucinated-tool. Request observability (one HTTP 200) never
+sees this — you have to measure the trajectory. That is the §19 point: agents need
+reliability (`pass^k`) + durable execution, not benchmark `pass@k`.
+
+### Which SLI I'd alert on first
+
+**`cost_per_task_usd` (with `loops_detected` as the trigger).** A loop is the canonical
+"HTTP 200 hiding a 12-step run that burned $5": invisible to request monitoring, and it's both
+a reliability failure *and* a silent cost runaway — a leading indicator. `success_rate` is the
+true SLO but it's *lagging* (you only learn after tasks fail); a cost/loop guardrail fires while
+the agent is still burning budget. So: page on cost-per-task / loop-rate first, track
+`success_rate` as the SLO, and watch `hallucinated_tool_calls` as an early model/prompt-drift signal.
