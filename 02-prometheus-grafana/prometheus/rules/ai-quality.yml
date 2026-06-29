@@ -21,7 +21,9 @@ groups:
 
       - alert: ServiceDown
         expr: up{job="inference-api"} == 0
-        for: 1m
+        # 30s dwell keeps `make alert` reliable within its 90s demo window
+        # (rule group evaluates every 30s; 1m dwell fires right at the boundary).
+        for: 30s
         labels:
           severity: critical
           service: inference-api

@@ -1,0 +1,30 @@
+{
+  "prompt_length": {
+    "psi": 3.461,
+    "kl": 1.7982,
+    "ks_stat": 0.702,
+    "ks_pvalue": 0.0,
+    "drift": "yes"
+  },
+  "embedding_norm": {
+    "psi": 0.0187,
+    "kl": 0.0324,
+    "ks_stat": 0.052,
+    "ks_pvalue": 0.133853,
+    "drift": "no"
+  },
+  "response_length": {
+    "psi": 0.0162,
+    "kl": 0.0178,
+    "ks_stat": 0.056,
+    "ks_pvalue": 0.086899,
+    "drift": "no"
+  },
+  "response_quality": {
+    "psi": 8.8486,
+    "kl": 13.5011,
+    "ks_stat": 0.941,
+    "ks_pvalue": 0.0,
+    "drift": "yes"
+  }
+}

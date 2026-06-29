@@ -59,6 +59,16 @@ services:
       - ./02-prometheus-grafana/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     environment:
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/REPLACE/ME}
+    # Alertmanager does NOT expand env vars inside its config file, so we write the
+    # webhook to a file at startup and reference it via `slack_api_url_file`.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        printf '%s' "$${SLACK_WEBHOOK_URL}" > /tmp/slack_webhook_url &&
+        exec /bin/alertmanager
+        --config.file=/etc/alertmanager/alertmanager.yml
+        --storage.path=/alertmanager
     networks: [obs]
 
   grafana:

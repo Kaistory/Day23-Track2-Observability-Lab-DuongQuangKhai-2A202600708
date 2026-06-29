@@ -1,0 +1,25 @@
+{
+  "docker": {
+    "ok": true,
+    "version": "29.0.1"
+  },
+  "compose_v2": {
+    "ok": true,
+    "version": "2.40.3-desktop.1"
+  },
+  "ram_gb_available": 1.86,
+  "ram_ok": false,
+  "required_ports": [
+    8000,
+    9090,
+    9093,
+    3000,
+    3100,
+    16686,
+    4317,
+    4318,
+    8888
+  ],
+  "bound_ports": [],
+  "all_ports_free": true
+}
